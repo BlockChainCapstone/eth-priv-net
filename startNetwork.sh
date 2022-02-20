@@ -1,9 +1,8 @@
 #!/bin/sh -x
 
 export BASEDIR=$(dirname "$0")
-export BOOT_NODE_FILE=$1
-export SEAL_NODES_FILE=$2
-export PEM_FILE=$3
+export RUN_CONFIG=$1
+
 
 #CONSTS
 export ETHER_BOOT="30000000000000000000000000000000"
@@ -11,9 +10,27 @@ export USER_ID=ubuntu
 export SEAL_ACCTS=""
 export ACCT_JSON=""
 
+checkVar(){
+    if [ -z "$1" ]; then
+	    echo "Variable $2 cannot be empty"
+	    exit 1
+    fi
+    echo "$2=$1"
+}
+
+
+. ${RUN_CONFIG}
 . ${BASEDIR}/bootstrap/eth.config
 
+
+
+checkVar $PEM_FILE "PEM_FILE"
+checkVar $SEAL_NODES "SEAL_NODES"
+checkVar $BOOT_NODE "BOOT_NODE"
+
+
 SSH_OPTIONS="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ${PEM_FILE}"
+
 
 copy_bootstrap(){
 	NODE=$1
@@ -25,7 +42,7 @@ copy_bootstrap(){
 
 setup_on_seal_nodes(){
 	echo "\n\n\n\n      Setting up Account on Seal Nodes\n"
-	while read nodeName; do
+	for nodeName in $(echo "${SEAL_NODES}" | tr ',' '\n'); do
 		echo "##########################################################"
 		echo "Setting up on Node : $nodeName"
 		echo "##########################################################"
@@ -42,12 +59,11 @@ setup_on_seal_nodes(){
 		echo "   Seal Account created -  $ACCT"
 		echo "##########################################################"
 
-	done < ${SEAL_NODES_FILE}
+	done 
 }
 
 setup_boot_node(){
 	echo "\n\n\n\n              Setting up the boot node\n"
-	export BOOT_NODE=`cat $BOOT_NODE_FILE`
 
 	echo "##########################################################"
 	echo "Starting Boot node on ${BOOT_NODE}"
@@ -67,7 +83,7 @@ setup_boot_node(){
 prepare_genesis(){
 	echo "\n\n\n\n        Preparing the genesis\n"
 	# Getting the acct details
-	while read nodeName; do
+	for  nodeName in $(echo "${SEAL_NODES}" | tr ',' '\n'); do
                 echo "##########################################################"
                 echo "Reading Acct  on Node : $nodeName"
                 echo "##########################################################"
@@ -75,10 +91,9 @@ prepare_genesis(){
                 ACCT=`ssh ${SSH_OPTIONS} $USER_ID@$nodeName "cat account.txt"`
 		ACCT_NOX=`echo $ACCT | cut -dx -f2`
 		SEAL_ACCTS="${SEAL_ACCTS}${ACCT_NOX}"
-		ACCT_JSON="${ACCT_JSON}\n\\\t\"${ACCT_NOX}\": {\\\n\\\t\\\t\"balance\": \"${ETHER_BOOT}\"\\\n\\\t},"
-        done < ${SEAL_NODES_FILE}
-	ACCT_JSON=`echo ${ACCT_JSON} |  tail -c +2 | head -c -2`
-	
+		ACCT_JSON="${ACCT_JSON}\\\n\\\t\"${ACCT_NOX}\": {\\\n\\\t\\\t\"balance\": \"${ETHER_BOOT}\"\\\n\\\t},"
+        done 
+	ACCT_JSON=`echo ${ACCT_JSON} |  head -c -2`
 	# Preparing the genesis from genesis.template
 	cat genesis.template| sed "s/__ACCOUNT_JSON__/${ACCT_JSON}/g" | sed "s/__SEAL_ACCOUNTS__/${SEAL_ACCTS}/g"  > genesis.json
 
@@ -88,7 +103,7 @@ prepare_genesis(){
 
 start_seal_node(){
 	echo "\n\n\n\n           Starting the seal nodes\n"
-	 while read nodeName; do
+	 for nodeName in $(echo "${SEAL_NODES}" | tr ',' '\n'); do
                 echo "##########################################################"
                 echo " Starting Geth on Seal Node : $nodeName"
                 echo "##########################################################"
@@ -98,21 +113,22 @@ start_seal_node(){
 
 		echo "Executing the geth process on the node"
 		ssh ${SSH_OPTIONS} $USER_ID@$nodeName "sh ~/bootstrap/startNode.sh ${DISCOVERY_ENODE}"
-        done < ${SEAL_NODES_FILE}
+        done 
 }
 
 monitor_nodes(){
 	echo "\n\n\n\n        Monitoring nodes\n"
 	INTERVAL=$1
-	while true; do 
-		while read nodeName; do
+	COUNT=10
+	while [ "$COUNT" -ge "0" ]; do 
+		for  nodeName in $(echo "${SEAL_NODES}" | tr ',' '\n'); do
         		echo "\n\n##########################################################"
 	                echo " Node : $nodeName"
         	        echo "##########################################################\n\n"
 
         	        ssh ${SSH_OPTIONS} $USER_ID@$nodeName "tail -10 ~/log.out"
 			echo "\n\n##########################################################"
-        	done < ${SEAL_NODES_FILE}
+        	done 
 
 		echo "\n\n##########################################################"
                 echo " Boot Node : $BOOT_NODE"
@@ -122,16 +138,19 @@ monitor_nodes(){
 
 		echo "\nSleeeping..............................\n"
 		sleep ${INTERVAL}
+
+		COUNT=$((COUNT-1))
 	done
 
 }
 
-setup_on_seal_nodes
+#setup_on_seal_nodes
 
-prepare_genesis
+#prepare_genesis
 
-setup_boot_node
+#setup_boot_node
 
-start_seal_node
+#start_seal_node
 
 monitor_nodes 10
+
