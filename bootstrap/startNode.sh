@@ -20,10 +20,10 @@ nohup geth --datadir=${BASE_DIR} \
 --networkid ${NETWORK_ID} \
 --allow-insecure-unlock \
 --unlock "$ACCOUNT" \
---password ${BASE_DIR}/password.txt > ~/log.out &
+--password ${BASE_DIR}/password.txt > ~/log.out 2>&1  &
 
 sleep 2
-echo ">>    Node Log "
-tail -20  log.out 
-echo "----------------------------------------------------------------------"
+echo ">> Log "
+tail -20 log.out
+echo "-----------------------------------------------"
 

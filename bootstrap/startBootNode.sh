@@ -14,4 +14,4 @@ echo ">> creating bootnode key"
 bootnode --genkey bootnode.key
 
 echo ">> starting bootnode"
-nohup bootnode --nodekey bootnode.key --verbosity 9 --addr 0.0.0.0:${BOOT_PORT} > log.out &
+nohup bootnode --nodekey bootnode.key --verbosity 9 --addr 0.0.0.0:${BOOT_PORT} > log.out 2>&1 &
