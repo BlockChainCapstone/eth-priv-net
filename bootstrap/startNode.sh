@@ -20,6 +20,7 @@ nohup geth --datadir=${BASE_DIR} \
 --networkid ${NETWORK_ID} \
 --allow-insecure-unlock \
 --unlock "$ACCOUNT" \
+--mine \
 --password ${BASE_DIR}/password.txt > ~/log.out 2>&1  &
 
 sleep 2

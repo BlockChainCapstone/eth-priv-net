@@ -59,14 +59,14 @@ setup_on_seal_nodes(){
 
 		echo "Create sealer account on $nodeName"
 		ssh ${SSH_OPTIONS} $USER_ID@$nodeName "sh ~/bootstrap/setupSealAccount.sh"
-		
+
 		ACCT=`ssh ${SSH_OPTIONS} $USER_ID@$nodeName "cat account.txt"`
 
 		echo "##########################################################"
 		echo "   Seal Account created -  $ACCT"
 		echo "##########################################################"
 
-	done 
+	done
 }
 
 setup_boot_node(){
@@ -75,11 +75,11 @@ setup_boot_node(){
 	echo "##########################################################"
 	echo "Starting Boot node on ${BOOT_NODE}"
 	echo "##########################################################"
-	copy_bootstrap ${BOOT_NODE} 
+	copy_bootstrap ${BOOT_NODE}
 
 	ssh ${SSH_OPTIONS} $USER_ID@${BOOT_NODE} "sh ~/bootstrap/startBootNode.sh"
 	BOOT_ENODE=`ssh ${SSH_OPTIONS} $USER_ID@${BOOT_NODE} "cat ~/log.out | grep enode| cut -d@ -f1"`
-	
+
 	export DISCOVERY_ENODE="${BOOT_ENODE}@${BOOT_NODE}:${BOOT_PORT}"
 	echo "##########################################################"
 	echo "Boot node start with  enode : ${DISCOVERY_ENODE}"
@@ -99,7 +99,7 @@ prepare_genesis(){
 		ACCT_NOX=`echo $ACCT | cut -dx -f2`
 		SEAL_ACCTS="${SEAL_ACCTS}${ACCT_NOX}"
 		ACCT_JSON="${ACCT_JSON}\\\n\\\t\"${ACCT_NOX}\": {\\\n\\\t\\\t\"balance\": \"${ETHER_BOOT}\"\\\n\\\t},"
-        done 
+  done
 	ACCT_JSON=`echo ${ACCT_JSON} |  head -c -2`
 	# Preparing the genesis from genesis.template
 	cat genesis.template| sed "s/__ACCOUNT_JSON__/${ACCT_JSON}/g" | sed "s/__SEAL_ACCOUNTS__/${SEAL_ACCTS}/g"  > genesis.json
@@ -114,20 +114,27 @@ start_seal_node(){
                 echo "##########################################################"
                 echo " Starting Geth on Seal Node : $nodeName"
                 echo "##########################################################"
-		
+
 		echo "Copying the genesis file to remote"
 		scp ${SSH_OPTIONS} -r ${BASEDIR}/genesis.json ${USER_ID}@$nodeName:~
 
 		echo "Executing the geth process on the node"
 		ssh ${SSH_OPTIONS} $USER_ID@$nodeName "sh ~/bootstrap/startNode.sh ${DISCOVERY_ENODE}"
-        done 
+    done
+}
+
+transfer(){
+  checkVar $USER_ACCOUNTS "USER_ACCOUNTS"
+  checkVar ${SEAL_NODES} "SEAL_NODES"
+  nodeName=$(echo "${SEAL_NODES}" | cut -d, -f1)
+  ssh ${SSH_OPTIONS} $USER_ID@$nodeName "sh ~/bootstrap/transferEthers.sh ${USER_ACCOUNTS}"
 }
 
 monitor_nodes(){
 	echo "\n\n\n\n        Monitoring nodes\n"
 	INTERVAL=$1
 	COUNT=10
-	while [ "$COUNT" -ge "0" ]; do 
+	while [ "$COUNT" -ge "0" ]; do
 		for  nodeName in $(echo "${SEAL_NODES}" | tr ',' '\n'); do
         		echo "\n\n##########################################################"
 	                echo " Node : $nodeName"
@@ -135,7 +142,7 @@ monitor_nodes(){
 
         	        ssh ${SSH_OPTIONS} $USER_ID@$nodeName "tail -10 ~/log.out"
 			echo "\n\n##########################################################"
-        	done 
+        	done
 
 		echo "\n\n##########################################################"
                 echo " Boot Node : $BOOT_NODE"
@@ -153,7 +160,7 @@ monitor_nodes(){
 
 
 case "${MODE}" in
-        setup) 
+        setup)
 		setup_on_seal_nodes
 
 		prepare_genesis
@@ -163,7 +170,10 @@ case "${MODE}" in
 		start_seal_node
 	;;
 
-        monitor) 
-		monitor_nodes 10	
+        monitor)
+		monitor_nodes 10
 	;;
+      transfer)
+    transfer
+  ;;
 esac
