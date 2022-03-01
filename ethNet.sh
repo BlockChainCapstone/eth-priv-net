@@ -1,14 +1,21 @@
 #!/bin/sh -x
 
 export BASEDIR=$(dirname "$0")
-export RUN_CONFIG=$1
-
+while getopts r:m: flag
+do
+    case "${flag}" in
+        r) RUN_CONFIG=${OPTARG};;
+        m) MODE=${OPTARG};;
+    esac
+done
 
 #CONSTS
 export ETHER_BOOT="30000000000000000000000000000000"
 export USER_ID=ubuntu
 export SEAL_ACCTS=""
 export ACCT_JSON=""
+
+
 
 checkVar(){
     if [ -z "$1" ]; then
@@ -144,13 +151,19 @@ monitor_nodes(){
 
 }
 
-#setup_on_seal_nodes
 
-#prepare_genesis
+case "${MODE}" in
+        setup) 
+		setup_on_seal_nodes
 
-#setup_boot_node
+		prepare_genesis
 
-#start_seal_node
+		setup_boot_node
 
-monitor_nodes 10
+		start_seal_node
+	;;
 
+        monitor) 
+		monitor_nodes 10	
+	;;
+esac
