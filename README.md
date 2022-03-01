@@ -22,6 +22,19 @@ A Config file containing following parameter
  SEAL_NODES=<comma separated list of ips to host eth net>
  BOOT_NODE=public ip of boot node`
 
+## Script Options
+
+### Setup Node
+Command for setup the private network
+` sh ethNet.sh -r ../runtime.conf -m setup `
+
+
+### Monitor Scripts
+Command for monitoring the network nodes
+`sh ethNet.sh -r ../runtime.conf -m monitor`
+
+
+
 ## Working
 It implements the automation in following manner.
 1. It creates the necessary seal accounts on eth nodes
